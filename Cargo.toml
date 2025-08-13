@@ -8,6 +8,7 @@ description = "configurable string escaping and unescaping"
 documentation = "https://docs.rs/escaping"
 license = "MIT"
 categories = ["text-processing"]
+readme = "README.md"
 
 [dependencies]
 anyhow = "1"

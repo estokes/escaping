@@ -67,7 +67,8 @@ impl<const C: usize, const TR: usize, F: Fn(char) -> bool> Escape<C, TR, F> {
     ///
     /// ```
     /// const ESC: Escape = Escape::const_new('\\', ['[',']', '\n', '\r', '\t', '\0'], |c| c.is_control());
-    ///
+    /// assert_eq!(ESC.escape("foo [e] bar \n"), r#"foo \[e\] bar \n");
+    /// assert_eq!(ESC.unescape(r#"foo \[e\] bar \n"), "foo [e] bar \n")
     /// ```
     pub const fn const_new(
         escape_char: char,
