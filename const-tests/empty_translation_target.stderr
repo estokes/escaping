@@ -1,0 +1,17 @@
+error[E0080]: evaluation of constant value failed
+ --> const-tests/empty_translation_target.rs:3:28
+  |
+3 |   const _ESC: Escape<8, 4> = Escape::const_new(
+  |  ____________________________^
+4 | |     '\\',
+5 | |     ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+6 | |     [('\n', ""), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+7 | |     None,
+8 | | );
+  | |_^ evaluation panicked: assertion failed: tr[i].1.len() > 0
+  |
+note: inside `escaping::Escape::<'_, 8, 4>::const_new`
+ --> src/lib.rs
+  |
+  |             assert!(tr[i].1.len() > 0);
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here

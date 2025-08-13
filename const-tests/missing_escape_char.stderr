@@ -1,0 +1,17 @@
+error[E0080]: evaluation of constant value failed
+ --> const-tests/missing_escape_char.rs:3:28
+  |
+3 |   const _ESC: Escape<7, 4> = Escape::const_new(
+  |  ____________________________^
+4 | |     '\\',
+5 | |     ['[', ']', '"', '\0', '\n', '\r', '\t'],
+6 | |     [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+7 | |     None,
+8 | | );
+  | |_^ evaluation panicked: assertion failed: escape_must_contain_the_escape_character
+  |
+note: inside `escaping::Escape::<'_, 7, 4>::const_new`
+ --> src/lib.rs
+  |
+  |         assert!(escape_must_contain_the_escape_character);
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here

@@ -8,12 +8,12 @@ want to escape, and a set of translations you want to use for escaped characters
 - bi directional escape and unescape methods based on your configuration
 - escaping aware split, splitn, and rsplit methods
 - configurable translations of escaped characters to ascii sequences and back
-- generic escaping and unescaping of arbitrary characters to and from \u{0xHHHHHH} format
+- generic escaping and unescaping of arbitrary characters to and from \u{HHHH} format
 - options to avoid allocation by supplying the target buffer
 
 Say you are writing a compiler and you want to implement interpolation of
 exressions surrounded by [] in string literals, as well as C like escapes, and
-escaping of any remaining control characters to generic \u{0xHHHHH} format.
+escaping of any remaining control characters to generic \u{HHHH} format.
 
 ```rust
 use escaping::Escape;

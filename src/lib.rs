@@ -105,7 +105,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
             assert!(tr[i].0 != escape_char);
             assert!(tr[i].1.len() > 0);
             assert!(tr[i].1.is_ascii());
-            assert!(!tr[i].1.as_bytes()[0] != b'u');
+            assert!(tr[i].1.as_bytes()[0] != b'u');
             assert!(!str_contains(&tr[i].1, escape_char as u8));
             let mut j = 0;
             while j < TR {
@@ -218,7 +218,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
             {
                 use std::fmt::Write;
                 buf.push(self.escape_char);
-                write!(buf, "u{{0x{:x}}}", c as u32).unwrap();
+                write!(buf, "u{{{:x}}}", c as u32).unwrap();
             } else {
                 buf.push(c);
             }
@@ -234,7 +234,9 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
         let s = s.as_ref();
         let mut to_escape = 0;
         for c in s.chars() {
-            if self.escape.contains(&c) {
+            if self.escape.contains(&c)
+                || self.generic.as_ref().map(|f| (f)(c)).unwrap_or(false)
+            {
                 to_escape += 1
             }
         }
@@ -257,7 +259,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
                 return None;
             }
             let i = s.find('}')?;
-            let n = s[2..i].parse::<u32>().ok()?;
+            let n = u32::from_str_radix(&s[2..i], 16).ok()?;
             let c = char::from_u32(n)?;
             Some((i + 1, c))
         }
@@ -359,18 +361,6 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
         T: AsRef<str> + ?Sized,
     {
         s.as_ref().split({
-            let mut esc = false;
-            move |c| self.is_sep(&mut esc, c, sep)
-        })
-    }
-
-    /// reverse split the string into parts separated by non escaped instances
-    /// of `sep` and return an iterator over the parts
-    pub fn rsplit<'a, T>(&self, s: &'a T, sep: char) -> impl Iterator<Item = &'a str>
-    where
-        T: AsRef<str> + ?Sized,
-    {
-        s.as_ref().rsplit({
             let mut esc = false;
             move |c| self.is_sep(&mut esc, c, sep)
         })
