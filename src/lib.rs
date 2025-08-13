@@ -1,11 +1,14 @@
 use anyhow::{bail, Result};
 use std::borrow::Cow;
 
-pub struct Escape<const C: usize, const TR: usize, F: Fn(char) -> bool> {
+#[cfg(test)]
+mod test;
+
+pub struct Escape<'a, const C: usize, const TR: usize> {
     escape_char: char,
     escape: [char; C],
-    tr: [(char, &'static str); TR],
-    generic: Option<F>,
+    tr: [(char, &'a str); TR],
+    generic: Option<fn(char) -> bool>,
 }
 
 const fn str_byte_eq(s0: &'static str, s1: &'static str) -> bool {
@@ -38,7 +41,7 @@ const fn str_contains(s: &'static str, c: u8) -> bool {
     false
 }
 
-impl<const C: usize, const TR: usize, F: Fn(char) -> bool> Escape<C, TR, F> {
+impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
     /// Create a new static Escape, compilation will fail if invariants are violated.
     /// - the escape array must contain the escape_char.
     /// - the escape array must contain every first char in tr
@@ -66,16 +69,28 @@ impl<const C: usize, const TR: usize, F: Fn(char) -> bool> Escape<C, TR, F> {
     /// control characters to unicode escape sequences
     ///
     /// ```
-    /// const ESC: Escape = Escape::const_new('\\', ['[',']', '\n', '\r', '\t', '\0'], |c| c.is_control());
-    /// assert_eq!(ESC.escape("foo [e] bar \n"), r#"foo \[e\] bar \n");
-    /// assert_eq!(ESC.unescape(r#"foo \[e\] bar \n"), "foo [e] bar \n")
+    /// use escaping::Escape;
+    /// fn use_generic(c: char) -> bool {
+    ///     c.is_control()
+    /// }
+    /// const ESC: Escape<7, 4> = Escape::const_new(
+    ///     '\\',
+    ///     ['\\', '[',']', '\n', '\r', '\t', '\0'],
+    ///     [('\n', "n"), ('\r', "r"), ('\t', "t"), ('\0', "0")],
+    ///     Some(use_generic)
+    /// );
+    /// assert_eq!(ESC.escape("foo [e] bar \n"), r#"foo \[e\] bar \n"#);
+    /// assert_eq!(ESC.unescape(r#"foo \[e\] bar \n"#), "foo [e] bar \n")
     /// ```
     pub const fn const_new(
         escape_char: char,
         escape: [char; C],
         tr: [(char, &'static str); TR],
-        generic: Option<F>,
-    ) -> Self {
+        generic: Option<fn(char) -> bool>,
+    ) -> Self
+    where
+        'tr: 'static,
+    {
         let mut i = 0;
         let mut escape_must_contain_the_escape_character = false;
         let mut every_first_tr_char_must_be_in_escape = true;
@@ -137,11 +152,11 @@ impl<const C: usize, const TR: usize, F: Fn(char) -> bool> Escape<C, TR, F> {
     ///
     /// numeric, if specified, will be called for each char, if it returns true,
     /// then the character will be translated to it's unicode escape sequence
-    pub fn new<'a>(
+    pub fn new(
         escape_char: char,
         escape: [char; C],
-        tr: [(char, &'static str); TR],
-        generic: Option<F>,
+        tr: [(char, &'tr str); TR],
+        generic: Option<fn(char) -> bool>,
     ) -> Result<Self> {
         if !escape_char.is_ascii() {
             bail!("the escape char must be ascii")
