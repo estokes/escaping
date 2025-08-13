@@ -1,3 +1,5 @@
+//! Escaping provides general round trippable string escaping. build an `Escape`
+//! with either `new` or `const_new`
 use anyhow::{bail, Result};
 use std::borrow::Cow;
 
@@ -60,7 +62,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
     /// character is first followed by the escaped translation. e.g. [('\n',
     /// "n")] for newline to \n translation.
     ///
-    /// numeric, if specified, will be called for each char, if it returns true,
+    /// `generic`, if specified, will be called for each char, if it returns true,
     /// then the character will be translated to it's unicode escape sequence
     ///
     /// # Examples
@@ -150,7 +152,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
     /// character is first followed by the escaped translation. e.g. [('\n',
     /// 'n')] for newline to \n translation.
     ///
-    /// numeric, if specified, will be called for each char, if it returns true,
+    /// `generic`, if specified, will be called for each char, if it returns true,
     /// then the character will be translated to it's unicode escape sequence
     pub fn new(
         escape_char: char,
