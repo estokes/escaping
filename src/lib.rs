@@ -226,19 +226,7 @@ impl Escape {
     where
         T: AsRef<str> + ?Sized,
     {
-        let s = s.as_ref();
-        let b = s.as_bytes();
-        !s.is_char_boundary(i) || {
-            let mut res = false;
-            for j in (0..i).rev() {
-                if s.is_char_boundary(j) && b[j] == (self.escape_char as u8) {
-                    res = !res;
-                } else {
-                    break;
-                }
-            }
-            res
-        }
+        is_escaped(s, self.escape_char, i)
     }
 
     /// split the string into at most `n` parts separated by non escaped
@@ -252,11 +240,7 @@ impl Escape {
     where
         T: AsRef<str> + ?Sized,
     {
-        s.as_ref().splitn(n, {
-            let escape_char = self.escape_char;
-            let mut esc = false;
-            move |c| is_sep(&mut esc, escape_char, c, sep)
-        })
+        splitn(s, self.escape_char, n, sep)
     }
 
     /// split the string into parts separated by non escaped instances of `sep`
@@ -269,10 +253,60 @@ impl Escape {
     where
         T: AsRef<str> + ?Sized,
     {
-        s.as_ref().split({
-            let escape_char = self.escape_char;
-            let mut esc = false;
-            move |c| is_sep(&mut esc, escape_char, c, sep)
-        })
+        split(s, self.escape_char, sep)
     }
+}
+
+/// return true if the char at i is not a valid character boundary or is escaped
+/// with the escape character
+pub fn is_escaped<T>(s: &T, escape_char: char, i: usize) -> bool
+where
+    T: AsRef<str> + ?Sized,
+{
+    let s = s.as_ref();
+    let b = s.as_bytes();
+    !s.is_char_boundary(i) || {
+        let mut res = false;
+        for j in (0..i).rev() {
+            if s.is_char_boundary(j) && b[j] == (escape_char as u8) {
+                res = !res;
+            } else {
+                break;
+            }
+        }
+        res
+    }
+}
+
+/// split the string into at most `n` parts separated by non escaped
+/// instances of `sep` and return an iterator over the parts
+pub fn splitn<'a, T>(
+    s: &'a T,
+    escape_char: char,
+    n: usize,
+    sep: char,
+) -> impl Iterator<Item = &'a str> + use<'a, T>
+where
+    T: AsRef<str> + ?Sized,
+{
+    s.as_ref().splitn(n, {
+        let mut esc = false;
+        move |c| is_sep(&mut esc, escape_char, c, sep)
+    })
+}
+
+/// split the string into parts separated by non escaped instances of `sep`
+/// and return an iterator over the parts
+pub fn split<'a, T>(
+    s: &'a T,
+    escape_char: char,
+    sep: char,
+) -> impl Iterator<Item = &'a str> + use<'a, T>
+where
+    T: AsRef<str> + ?Sized,
+{
+    s.as_ref().split({
+        let mut esc = false;
+        move |c| is_sep(&mut esc, escape_char, c, sep)
+    })
 }
