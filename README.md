@@ -12,7 +12,7 @@ want to escape, and a set of translations you want to use for escaped characters
 - options to avoid allocation by supplying the target buffer
 
 Say you are writing a compiler and you want to implement interpolation of
-exressions surrounded by [] in string literals, as well as C like escapes, and
+expressions surrounded by [] in string literals, as well as C like escapes, and
 escaping of any remaining control characters to generic \u{HHHH} format.
 
 ```rust
