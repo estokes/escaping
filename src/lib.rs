@@ -7,11 +7,21 @@ use std::borrow::Cow;
 #[cfg(test)]
 mod test;
 
+#[derive(Debug, Clone)]
 pub struct Escape {
     escape_char: char,
     escape: Box<[char]>,
     tr: Box<[(char, CompactString)]>,
     generic: Option<fn(char) -> bool>,
+}
+
+fn is_sep(esc: &mut bool, escape_char: char, c: char, sep: char) -> bool {
+    if c == sep {
+        !*esc
+    } else {
+        *esc = c == escape_char && !*esc;
+        false
+    }
 }
 
 impl Escape {
@@ -231,15 +241,6 @@ impl Escape {
         }
     }
 
-    fn is_sep(&self, esc: &mut bool, c: char, sep: char) -> bool {
-        if c == sep {
-            !*esc
-        } else {
-            *esc = c == self.escape_char && !*esc;
-            false
-        }
-    }
-
     /// split the string into at most `n` parts separated by non escaped
     /// instances of `sep` and return an iterator over the parts
     pub fn splitn<'a, T>(
@@ -251,9 +252,10 @@ impl Escape {
     where
         T: AsRef<str> + ?Sized,
     {
+        let escape_char = self.escape_char;
         s.as_ref().splitn(n, {
             let mut esc = false;
-            move |c| self.is_sep(&mut esc, c, sep)
+            move |c| is_sep(&mut esc, escape_char, c, sep)
         })
     }
 
@@ -263,9 +265,10 @@ impl Escape {
     where
         T: AsRef<str> + ?Sized,
     {
+        let escape_char = self.escape_char;
         s.as_ref().split({
             let mut esc = false;
-            move |c| self.is_sep(&mut esc, c, sep)
+            move |c| is_sep(&mut esc, escape_char, c, sep)
         })
     }
 }
