@@ -44,6 +44,21 @@ const fn str_contains(s: &'static str, c: u8) -> bool {
 }
 
 impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
+    /// return the escape char
+    pub fn get_escape_char(&self) -> char {
+        self.escape_char
+    }
+
+    /// return the set of escaped chars
+    pub fn get_escaped(&self) -> &[char] {
+        &self.escape
+    }
+
+    /// return the translations
+    pub fn get_tr(&self) -> &[(char, &'tr str)] {
+        &self.tr
+    }
+
     /// Create a new static Escape, compilation will fail if invariants are violated.
     /// - the escape array must contain the escape_char.
     /// - the escape array must contain every first char in tr
