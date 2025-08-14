@@ -6,13 +6,13 @@ want to escape, and a set of translations you want to use for escaped characters
 (for example to handle non printable characters). It provides,
 
 - bi directional escape and unescape methods based on your configuration
-- escaping aware split, splitn, and rsplit methods
+- escaping aware split, and splitn methods
 - configurable translations of escaped characters to ascii sequences and back
 - generic escaping and unescaping of arbitrary characters to and from \u{HHHH} format
 - options to avoid allocation by supplying the target buffer
 
 Say you are writing a compiler and you want to implement interpolation of
-exressions surrounded by [] in string literals, as well as C like escapes, and
+expressions surrounded by [] in string literals, as well as C like escapes, and
 escaping of any remaining control characters to generic \u{HHHH} format.
 
 ```rust
