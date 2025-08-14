@@ -6,7 +6,7 @@ want to escape, and a set of translations you want to use for escaped characters
 (for example to handle non printable characters). It provides,
 
 - bi directional escape and unescape methods based on your configuration
-- escaping aware split, splitn, and rsplit methods
+- escaping aware split, and splitn methods
 - configurable translations of escaped characters to ascii sequences and back
 - generic escaping and unescaping of arbitrary characters to and from \u{HHHH} format
 - options to avoid allocation by supplying the target buffer
