@@ -248,12 +248,12 @@ impl Escape {
         s: &'a T,
         n: usize,
         sep: char,
-    ) -> impl Iterator<Item = &'a str>
+    ) -> impl Iterator<Item = &'a str> + use<'a, T>
     where
         T: AsRef<str> + ?Sized,
     {
-        let escape_char = self.escape_char;
         s.as_ref().splitn(n, {
+            let escape_char = self.escape_char;
             let mut esc = false;
             move |c| is_sep(&mut esc, escape_char, c, sep)
         })
@@ -261,12 +261,16 @@ impl Escape {
 
     /// split the string into parts separated by non escaped instances of `sep`
     /// and return an iterator over the parts
-    pub fn split<'a, T>(&self, s: &'a T, sep: char) -> impl Iterator<Item = &'a str>
+    pub fn split<'a, T>(
+        &self,
+        s: &'a T,
+        sep: char,
+    ) -> impl Iterator<Item = &'a str> + use<'a, T>
     where
         T: AsRef<str> + ?Sized,
     {
-        let escape_char = self.escape_char;
         s.as_ref().split({
+            let escape_char = self.escape_char;
             let mut esc = false;
             move |c| is_sep(&mut esc, escape_char, c, sep)
         })
