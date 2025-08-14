@@ -1,16 +1,20 @@
 use crate::Escape;
 use proptest::prelude::*;
+use std::sync::LazyLock;
 
 fn use_generic_escape(c: char) -> bool {
     c.is_control()
 }
 
-const ESC: Escape<8, 4> = Escape::const_new(
-    '\\',
-    ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-    [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
-    Some(use_generic_escape),
-);
+static ESC: LazyLock<Escape> = LazyLock::new(|| {
+    Escape::new(
+        '\\',
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        Some(use_generic_escape),
+    )
+    .unwrap()
+});
 
 #[test]
 fn basic_round_trip() {
@@ -31,7 +35,7 @@ proptest! {
     ) {
         let generic = if use_generic_flag { Some(use_generic_escape as fn(char) -> bool) } else { None };
         let tr: [(char, &str); 5] = std::array::from_fn(|i| (tr_keys[i], tr_values[i].as_str()));
-        if let Ok(esc) = Escape::<10, 5>::new(escape_char, escape, tr, generic) {
+        if let Ok(esc) = Escape::new(escape_char, &escape, &tr, generic) {
             let escaped = esc.escape(&input);
             let unescaped = esc.unescape(&escaped);
             assert_eq!(unescaped, input);
@@ -41,33 +45,21 @@ proptest! {
 
 #[test]
 fn test_new_success() {
-    const _ESC: Escape<8, 4> = Escape::const_new(
+    let _ = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
-        Some(use_generic_escape),
-    );
-    let _ = Escape::<8, 4>::new(
-        '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         Some(use_generic_escape),
     )
     .unwrap();
 }
 
 #[test]
-fn const_constructor_tests() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("const-tests/*.rs");
-}
-
-#[test]
 fn test_new_fail_missing_escape_char() {
-    let res = Escape::<7, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -75,10 +67,10 @@ fn test_new_fail_missing_escape_char() {
 
 #[test]
 fn test_new_fail_duplicate_tr_key() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\n', "t")], // duplicate key '\n'
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\n', "t")], // duplicate key '\n'
         None,
     );
     assert!(res.is_err());
@@ -86,10 +78,10 @@ fn test_new_fail_duplicate_tr_key() {
 
 #[test]
 fn test_new_fail_non_ascii_escape_char() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '☃',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -97,10 +89,10 @@ fn test_new_fail_non_ascii_escape_char() {
 
 #[test]
 fn test_new_fail_translate_escape_char() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\\', "esc"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\\', "esc"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -108,10 +100,10 @@ fn test_new_fail_translate_escape_char() {
 
 #[test]
 fn test_new_fail_empty_translation_target() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', ""), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', ""), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -119,10 +111,10 @@ fn test_new_fail_empty_translation_target() {
 
 #[test]
 fn test_new_fail_non_ascii_translation_target() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "nñ"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "nñ"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -130,10 +122,10 @@ fn test_new_fail_non_ascii_translation_target() {
 
 #[test]
 fn test_new_fail_translation_starts_with_u() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "uabc"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "uabc"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -141,10 +133,10 @@ fn test_new_fail_translation_starts_with_u() {
 
 #[test]
 fn test_new_fail_translation_contains_escape() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n\\"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n\\"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -152,10 +144,10 @@ fn test_new_fail_translation_contains_escape() {
 
 #[test]
 fn test_new_fail_key_not_in_escape() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\r', '\t', 'x'],
-        [('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\r', '\t', 'x'],
+        &[('\n', "n"), ('\r', "r"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());
@@ -163,10 +155,10 @@ fn test_new_fail_key_not_in_escape() {
 
 #[test]
 fn test_new_fail_duplicate_translation_target() {
-    let res = Escape::<8, 4>::new(
+    let res = Escape::new(
         '\\',
-        ['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
-        [('\n', "n"), ('\r', "n"), ('\0', "0"), ('\t', "t")],
+        &['\\', '[', ']', '"', '\0', '\n', '\r', '\t'],
+        &[('\n', "n"), ('\r', "n"), ('\0', "0"), ('\t', "t")],
         None,
     );
     assert!(res.is_err());

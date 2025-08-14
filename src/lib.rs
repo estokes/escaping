@@ -1,49 +1,20 @@
 //! Escaping provides general round trippable string escaping. build an `Escape`
 //! with either `new` or `const_new`
 use anyhow::{bail, Result};
+use compact_str::CompactString;
 use std::borrow::Cow;
 
 #[cfg(test)]
 mod test;
 
-pub struct Escape<'a, const C: usize, const TR: usize> {
+pub struct Escape {
     escape_char: char,
-    escape: [char; C],
-    tr: [(char, &'a str); TR],
+    escape: Box<[char]>,
+    tr: Box<[(char, CompactString)]>,
     generic: Option<fn(char) -> bool>,
 }
 
-const fn str_byte_eq(s0: &'static str, s1: &'static str) -> bool {
-    let s0 = s0.as_bytes();
-    let s1 = s1.as_bytes();
-    s0.len() == s1.len() && {
-        let mut i = 0;
-        loop {
-            if i >= s0.len() {
-                break true;
-            } else {
-                if s0[i] != s1[i] {
-                    break false;
-                }
-            }
-            i += 1
-        }
-    }
-}
-
-const fn str_contains(s: &'static str, c: u8) -> bool {
-    let s = s.as_bytes();
-    let mut i = 0;
-    while i < s.len() {
-        if s[i] == c {
-            return true;
-        }
-        i += 1
-    }
-    false
-}
-
-impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
+impl Escape {
     /// return the escape char
     pub fn get_escape_char(&self) -> char {
         self.escape_char
@@ -55,98 +26,8 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
     }
 
     /// return the translations
-    pub fn get_tr(&self) -> &[(char, &'tr str)] {
+    pub fn get_tr(&self) -> &[(char, CompactString)] {
         &self.tr
-    }
-
-    /// Create a new static Escape, compilation will fail if invariants are violated.
-    /// - the escape array must contain the escape_char.
-    /// - the escape array must contain every first char in tr
-    /// - the escape char, and the target tr char must be ascii
-    /// - translation key may not be the escape char
-    /// - translation targets must be ascii,
-    /// - translation targets must be unique
-    /// - translation targets may not be empty
-    /// - translation targets may not start with u
-    /// - translation targets may not contain the escape char
-    ///
-    /// `escape` is the list of characters that will be escaped when you call `escape`
-    ///
-    /// `tr` is the set of characters that are translated when escaped. For
-    /// example the newline character might translate to \n. The original
-    /// character is first followed by the escaped translation. e.g. [('\n',
-    /// "n")] for newline to \n translation.
-    ///
-    /// `generic`, if specified, will be called for each char, if it returns true,
-    /// then the character will be translated to it's unicode escape sequence
-    ///
-    /// # Examples
-    ///
-    /// Escape '[' and ']', translate C like escape sequences, and translate
-    /// control characters to unicode escape sequences
-    ///
-    /// ```
-    /// use escaping::Escape;
-    /// fn use_generic(c: char) -> bool {
-    ///     c.is_control()
-    /// }
-    /// const ESC: Escape<7, 4> = Escape::const_new(
-    ///     '\\',
-    ///     ['\\', '[',']', '\n', '\r', '\t', '\0'],
-    ///     [('\n', "n"), ('\r', "r"), ('\t', "t"), ('\0', "0")],
-    ///     Some(use_generic)
-    /// );
-    /// assert_eq!(ESC.escape("foo [e] bar \n"), r#"foo \[e\] bar \n"#);
-    /// assert_eq!(ESC.unescape(r#"foo \[e\] bar \n"#), "foo [e] bar \n")
-    /// ```
-    pub const fn const_new(
-        escape_char: char,
-        escape: [char; C],
-        tr: [(char, &'static str); TR],
-        generic: Option<fn(char) -> bool>,
-    ) -> Self
-    where
-        'tr: 'static,
-    {
-        let mut i = 0;
-        let mut escape_must_contain_the_escape_character = false;
-        let mut every_first_tr_char_must_be_in_escape = true;
-        assert!(escape_char.is_ascii());
-        while i < C {
-            escape_must_contain_the_escape_character |= escape[i] == escape_char;
-            i += 1
-        }
-        assert!(escape_must_contain_the_escape_character);
-        i = 0;
-        while i < TR {
-            assert!(tr[i].0 != escape_char);
-            assert!(tr[i].1.len() > 0);
-            assert!(tr[i].1.is_ascii());
-            assert!(tr[i].1.as_bytes()[0] != b'u');
-            assert!(!str_contains(&tr[i].1, escape_char as u8));
-            let mut j = 0;
-            while j < TR {
-                if i != j {
-                    assert!(tr[j].0 != tr[i].0);
-                    assert!(!str_byte_eq(&tr[j].1, &tr[i].1))
-                }
-                j += 1
-            }
-            i += 1;
-        }
-        i = 0;
-        while i < TR {
-            let mut j = 0;
-            let mut present = false;
-            while j < C {
-                present |= escape[j] == tr[i].0;
-                j += 1
-            }
-            every_first_tr_char_must_be_in_escape &= present;
-            i += 1
-        }
-        assert!(every_first_tr_char_must_be_in_escape);
-        Self { escape_char, escape, tr, generic }
     }
 
     /// Create a new Escape, return an error if the folowing invariants are violated
@@ -171,8 +52,8 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
     /// then the character will be translated to it's unicode escape sequence
     pub fn new(
         escape_char: char,
-        escape: [char; C],
-        tr: [(char, &'tr str); TR],
+        escape: &[char],
+        tr: &[(char, &str)],
         generic: Option<fn(char) -> bool>,
     ) -> Result<Self> {
         if !escape_char.is_ascii() {
@@ -211,7 +92,12 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
                 }
             }
         }
-        Ok(Self { escape_char, escape, tr, generic })
+        Ok(Self {
+            escape_char,
+            escape: Box::from(escape),
+            tr: Box::from_iter(tr.iter().map(|(c, s)| (*c, CompactString::new(s)))),
+            generic,
+        })
     }
 
     /// Escape the string and place the results into the buffer
@@ -225,7 +111,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
                 match self
                     .tr
                     .iter()
-                    .find_map(|(s, e)| if c == *s { Some(*e) } else { None })
+                    .find_map(|(s, e)| if c == *s { Some(e) } else { None })
                 {
                     Some(e) => buf.push_str(e),
                     None => buf.push(c),
@@ -292,7 +178,7 @@ impl<'tr, const C: usize, const TR: usize> Escape<'tr, C, TR> {
             } else if escaped {
                 escaped = false;
                 for (v, k) in &self.tr {
-                    if s[i..].starts_with(k) {
+                    if s[i..].starts_with(k.as_str()) {
                         skip_to = i + k.len();
                         return Some(*v);
                     }
